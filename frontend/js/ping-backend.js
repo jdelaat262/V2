@@ -1,11 +1,15 @@
 function pingBackend() {
-    // Functie om de verbinding met de backend te testen
     fetch('http://127.0.0.1:8000/api/v1/ping/')
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message); // Toon een melding als de verbinding succesvol is
-    })
-    .catch(error => {
-        alert('Fout: De backend is niet bereikbaar.'); 
-    });
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Netwerkrespons was niet ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            alert(data.status); // <-- Deze regel is aangepast
+        })
+        .catch(error => {
+            alert('Fout: De backend is niet bereikbaar.');
+        });
 }

@@ -46,7 +46,7 @@ const processFormData = (form) => {
 
 // Asynchrone functie voor het versturen van data naar de API
 const submitToAPI = async (data) => {
-    const url = 'http://127.0.0.1:8000/api/v1/certificaten/';
+    const url = 'http://127.0.0.1:8000/api/v1/deelnemers/'; 
     try {
         const response = await fetch(url, {
             method: 'POST',
