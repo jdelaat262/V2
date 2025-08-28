@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/v1/', include('backend_app.urls')),
+    path("admin/", admin.site.urls),
+    path("api/", include("backend_app.urls")),       # << dit voegt /api/... toe
+    path("api/v1/", include("backend_app.urls")),    # << je houdt ook /api/v1/... beschikbaar
 ]
