@@ -1,17 +1,18 @@
+// In qr-code-page.js
+
 document.addEventListener('DOMContentLoaded', () => {
     // Haal de query parameters uit de URL
     const urlParams = new URLSearchParams(window.location.search);
     const cursusNaam = urlParams.get('cursusNaam');
     const cursusdatum = urlParams.get('cursusdatum');
-    
 
     if (cursusNaam && cursusdatum) {
         // Bouw de URL die in de QR-code gecodeerd wordt
-        const qrUrl = `http://192.168.1.161:8001/qr-scan-form.html?cursusNaam=${cursusNaam}&cursusdatum=${cursusdatum}`;
+        const qrUrl = `http://192.168.1.161:8001/qr-scan-form.html?cursusNaam=${encodeURIComponent(cursusNaam)}&cursusdatum=${cursusdatum}`;
 
         // Genereer de QR-code
         const qrcodeContainer = document.getElementById('qrcodeDisplay');
-        qrcodeContainer.innerHTML = ''; // Leeg de container eerst
+        qrcodeContainer.innerHTML = '';
         const qrcode = new QRCode(qrcodeContainer, {
             text: qrUrl,
             width: 256,
@@ -25,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const directLink = document.getElementById('directLink');
         directLink.href = qrUrl;
         directLink.textContent = qrUrl;
-        directLink.textContent = 'hier';
 
         console.log("QR Code gegenereerd met URL:", qrUrl);
     } else {
