@@ -3,14 +3,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (qrGeneratorForm) {
         qrGeneratorForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+
             const cursusNaam = qrGeneratorForm.querySelector('#qrCursus').value;
             const cursusdatum = qrGeneratorForm.querySelector('#qrCursusdatum').value;
 
             if (!cursusNaam || !cursusdatum) {
-                // Toon een melding als de validatie faalt
                 alert('Vul alstublieft de cursusnaam en cursusdatum in.');
-                event.preventDefault(); // Voorkom het verzenden van het formulier
+                return;
             }
+
+            const baseUrl = `${window.location.origin}/qr-code-page.html`;
+            const params = new URLSearchParams({
+                cursusNaam: encodeURIComponent(cursusNaam), // <-- Hier is de aanpassing!
+                cursusdatum: cursusdatum
+            });
+
+            const fullUrl = `${baseUrl}?${params.toString()}`;
+
+            // Redirect naar de nieuwe pagina met de correcte URL-parameters
+            window.location.href = fullUrl;
         });
     }
 });
