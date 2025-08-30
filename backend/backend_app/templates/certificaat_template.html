@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Certificaat voor {{ deelnemer.voornaam }}</title>
+    {# Laad de staticfiles template tags van Django #}
+    {% load static %}
+    <style>
+        /* Basisstijlen voor het certificaat */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            position: relative;
+        }
+        
+        .a4-page-wrapper {
+            position: relative;
+            width: 210mm;
+            min-height: 297mm;
+            margin: 20px auto;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            background-color: white;
+            overflow: hidden;
+            background-image: url('{% static "backend_app/certificaat_achtergrond.png" %}');
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        @page {
+            margin: 0;
+            size: A4 portrait;
+        }
+
+        .certificaat-content {
+            position: absolute;
+            top: 15%;
+            left: 40%;
+            transform: translateX(-50%);
+            width: 70%;
+            max-width: 700px;
+            padding: 20px;
+            color: #000;
+            text-shadow: none;
+            border-radius: 10px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            text-align: left;
+        }
+
+        h1, h2, p, .signature, .address-line {
+            color: inherit;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            text-align: left;
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        h1 {
+            font-size: 2.8em;
+            margin-bottom: 20px;
+        }
+        h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 1.3em;
+            margin-bottom: 5px;
+        }
+        .highlight {
+            color: #FFD700;
+            font-weight: bold;
+        }
+        .signature {
+            margin-top: 50px;
+            font-style: italic;
+            color: inherit;
+            font-size: 1.2em;
+        }
+        .address-line {
+            font-size: 1em;
+            margin-top: 2px;
+            margin-bottom: 2px;
+        }
+
+        .download-button-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            text-align: center;
+        }
+        .download-button, .email-button {
+            display: inline-block;
+            width: 200px;
+            background-color: #FFD700;
+            border: 1px solid #FFD700;
+            border-radius: 0.5rem;
+            color: #000;
+            padding: 0.75rem 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            margin: 0 5px;
+        }
+        .download-button:hover, .email-button:hover {
+            background-color: #e6c200;
+            border-color: #e6c200;
+            box-shadow: 0 0.25rem 0.5rem rgba(255, 215, 0, 0.25);
+        }
+
+        @media print {
+            .download-button-container {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="a4-page-wrapper">
+        <div class="certificaat-content">
+            <h1>Certificaat</h1>
+            <p>Dit certificaat bevestigt dat</p>
+            <h2><span class="highlight">
+                {{ deelnemer.voornaam }}
+                {% if deelnemer.tussenvoegsel %}{{ deelnemer.tussenvoegsel }} {% endif %}
+                {{ deelnemer.achternaam }}
+            </span></h2>
+            
+            {% if cursus.refresher %}
+                <p>met succes de herhalingscursus</p>
+            {% else %}
+                <p>met succes de cursus</p>
+            {% endif %}
+
+            <h2><span class="highlight">{{ cursus.cursus }}</span></h2>
+            <p>heeft afgerond op</p>
+            <h2><span class="highlight">{{ cursus.cursusdatum|date:"d F Y" }}</span></h2>
+            <p>Dit certificaat is geldig tot en met</p>
+            <h2><span class="highlight">{{ cursus.geldigheid_datum|date:"d F Y" }}</span></h2>
+
+            <p class="signature">Uitgereikt door SafetyPro</p>
+            <p class="address-line">Siliciumweg 28, 3812 SX Amersfoort</p>
+            <p class="address-line">+31 33 720 0998</p>
+            <p class="address-line">training@safetypro.nl</p>
+        </div>
+
+        <div class="download-button-container">
+            <button id="downloadPdfBtn" class="download-button">Download Certificaat als PDF</button>
+            <button id="sendEmailBtn" class="email-button">Verstuur E-mail</button>
+        </div>
+    </div>
+
+    <script>
+        // Functie om CSRF-token uit cookies te halen
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.startsWith(name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+            const sendEmailBtn = document.getElementById('sendEmailBtn');
+            const csrftoken = getCookie('csrftoken'); // Haal de CSRF-token op
+
+            function getIdsFromUrl() {
+                const pathParts = window.location.pathname.split('/');
+                const deelnemerIdIndex = pathParts.findIndex(part => part === 'preview-certificate') + 1;
+                const cursusIdIndex = deelnemerIdIndex + 1;
+                
+                const deelnemerId = pathParts[deelnemerIdIndex];
+                const cursusId = pathParts[cursusIdIndex];
+                
+                if (deelnemerId && cursusId) {
+                    return { deelnemerId, cursusId };
+                }
+                return null;
+            }
+
+            const ids = getIdsFromUrl();
+
+            if (downloadPdfBtn && ids) {
+                downloadPdfBtn.addEventListener('click', function() {
+                    const pdfUrl = `/api/v1/generate-certificate/${ids.deelnemerId}/${ids.cursusId}/`;
+                    window.open(pdfUrl, '_blank');
+                });
+            }
+
+            if (sendEmailBtn && ids) {
+                sendEmailBtn.addEventListener('click', async function() {
+                    if (confirm('Weet je zeker dat je het certificaat wilt versturen?')) {
+                        const emailUrl = `/api/v1/send-certificate/${ids.deelnemerId}/${ids.cursusId}/`;
+                        
+                        try {
+                            const response = await fetch(emailUrl, { 
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': csrftoken // Voeg de token toe aan de headers
+                                }
+                            });
+
+                            if (response.ok) {
+                                alert('E-mail succesvol verstuurd!');
+                            } else {
+                                const errorData = await response.json();
+                                alert('Fout bij het versturen van de e-mail: ' + (errorData.error || 'Onbekende fout.'));
+                            }
+                        } catch (e) {
+                            alert('Er is een netwerkfout opgetreden.');
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

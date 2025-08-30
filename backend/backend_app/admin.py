@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.urls import reverse
+from django.utils.html import format_html
 from .models import Cursus, Deelnemer
 
 class DeelnemerInline(admin.TabularInline):
@@ -12,15 +14,28 @@ class CursusInline(admin.TabularInline):
     extra = 1
     verbose_name = "Cursus"
     verbose_name_plural = "Cursussen"
+    readonly_fields = ('certificaat_actions',)
+
+    def certificaat_actions(self, obj):
+        if obj.id:
+            preview_url = reverse('preview-certificate', args=[obj.deelnemer.id, obj.cursus.id])
+            pdf_url = reverse('generate-certificate-pdf', args=[obj.deelnemer.id, obj.cursus.id])
+            return format_html(
+                '<a href="{}" target="_blank" class="button">Preview</a> '
+                '<a href="{}" target="_blank" class="button">PDF</a>',
+                preview_url, pdf_url
+            )
+        return "Sla eerst op"
+    certificaat_actions.short_description = "Certificaat"
 
 class DeelnemerAdmin(admin.ModelAdmin):
-    list_display = ['voornaam', 'tussenvoegsel', 'achternaam', 'email', 'bedrijfsnaam']
-    inlines = [CursusInline]  # Toont cursussen bij elke deelnemer
+    list_display = ['voornaam', 'achternaam', 'email', 'bedrijfsnaam']
+    inlines = [CursusInline]
     
 class CursusAdmin(admin.ModelAdmin):
     list_display = ['cursus', 'cursusdatum', 'refresher']
-    inlines = [DeelnemerInline]  # Toont deelnemers bij elke cursus
-    filter_horizontal = ('deelnemers',)  # Extra selector voor bulk toevoegen
+    inlines = [DeelnemerInline]
+    filter_horizontal = ('deelnemers',)
 
 admin.site.register(Deelnemer, DeelnemerAdmin)
 admin.site.register(Cursus, CursusAdmin)
