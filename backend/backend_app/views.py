@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.http import HttpResponse, JsonResponse
 from django.core.mail import EmailMessage
+from django.core.mail import send_mail  # Importeer send_mail
 from django.conf import settings
 from weasyprint import HTML
 from .models import Cursus, Deelnemer
@@ -12,6 +13,7 @@ from .serializers import DeelnemerSerializer, CursusSerializer
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from datetime import date, timedelta
+import json  # Importeer json
 
 class DeelnemerViewSet(viewsets.ModelViewSet):
     queryset = Deelnemer.objects.all()
@@ -137,18 +139,30 @@ def send_expiry_reminders(request):
     # Ontvangt lijst van deelnemer/cursus IDs
     reminder_list = request.data.get('reminders', [])
     
-    for item in reminder_list:
-        deelnemer = Deelnemer.objects.get(id=item['deelnemer_id'])
-        cursus = Cursus.objects.get(id=item['cursus_id'])
+    try:
+        for item in reminder_list:
+            deelnemer = get_object_or_404(Deelnemer, id=item['deelnemer_id'])
+            cursus = get_object_or_404(Cursus, id=item['cursus_id'])
+            
+            # Email content
+            subject = f"Herinnering: Je certificaat voor {cursus.cursus} verloopt binnenkort"
+            body = f"Beste {deelnemer.voornaam},\n\nJe certificaat voor {cursus.cursus} verloopt op {cursus.geldigheid_datum.strftime('%d-%m-%Y')}. \n\nMet vriendelijke groet,\nSafetyPro"
+            
+            # Controleer of e-mailadres niet leeg is
+            if not deelnemer.email:
+                continue
+
+            email = EmailMessage(subject, body, settings.EMAIL_HOST_USER, [deelnemer.email])
+            email.send()
         
-        # Email content
-        subject = f"Reminder: Je certificaat voor {cursus.cursus} verloopt binnenkort"
-        body = f"Beste {deelnemer.voornaam},\n\nJe certificaat voor {cursus.cursus} verloopt op {cursus.geldigheid_datum}..."
-        
-        email = EmailMessage(subject, body, settings.EMAIL_HOST_USER, [deelnemer.email])
-        email.send()
+        return Response({"sent": len(reminder_list)}, status=status.HTTP_200_OK)
     
-    return Response({"sent": len(reminder_list)})
+    except Deelnemer.DoesNotExist:
+        return Response({"error": "Deelnemer niet gevonden."}, status=status.HTTP_404_NOT_FOUND)
+    except Cursus.DoesNotExist:
+        return Response({"error": "Cursus niet gevonden of niet gekoppeld aan deze deelnemer."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"Fout bij het versturen van de e-mail: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # CERTIFICAAT GENERATIE VIEWS
 @api_view(['GET'])
