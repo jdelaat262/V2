@@ -14,39 +14,18 @@ const showStatus = (message, isSuccess) => {
     }
 };
 
-// Functie voor het verwerken van het formulier
-const processFormData = (form) => {
-    const formData = new FormData(form);
-    const data = {};
-    formData.forEach((value, key) => (data[key] = value));
-
-    // Verwerk checkboxen naar boolean
-    data.refreshercheck = !!data.refreshercheck;
-    data.vastzettenCheck = !!data.vastzettenCheck;
-
-    // Verwerk lege strings naar null
-    for (const key in data) {
-        if (data[key] === '') {
-            data[key] = null;
-        }
+const handleGeldigheidChange = (event) => {
+    const datumInput = document.getElementById('geldigheid-datum-input');
+    if (datumInput) {
+        datumInput.hidden = event.target.value !== 'custom';
     }
-    
-    // Verwerk geldigheid op basis van de dropdown of custom input
-    if (data['geldigheid-jaren'] === 'custom' && data['geldigheid-datum-input']) {
-        data.geldigheid_jaren = data['geldigheid-datum-input'];
-    } else {
-        data.geldigheid_jaren = data['geldigheid-jaren'];
-    }
-
-    // Verwijder onnodige velden voordat de data naar de API gaat
-    delete data['geldigheid-datum-input'];
-
-    return data;
 };
 
-// Asynchrone functie voor het versturen van data naar de API
 const submitToAPI = async (data) => {
-    const url = 'http://127.0.0.1:8000/api/v1/deelnemers/'; 
+    const url = 'http://127.0.0.1:8000/api/v1/deelnemer-cursus/';
+    console.log('Versturen naar URL:', url); // Debug: URL check
+    console.log('Data die wordt verstuurd:', data); // Debug: uitgaande data
+    
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -56,18 +35,21 @@ const submitToAPI = async (data) => {
             body: JSON.stringify(data),
         });
 
+        console.log('Response status:', response.status); // Debug: response status
+        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const responseData = await response.json();
+        console.log('Response data ontvangen:', responseData); // Debug: response data
         return { success: true, data: responseData };
     } catch (error) {
+        console.error('Fout in submitToAPI:', error); // Debug: error details
         return { success: false, message: error.message };
     }
 };
 
-// De hoofd 'submit' handler
 const handleFormSubmit = async (event) => {
     event.preventDefault();
     const form = event.target;
@@ -75,27 +57,29 @@ const handleFormSubmit = async (event) => {
 
     submitButton.disabled = true;
 
-    // Verzamel en verwerk de formulierdata
-    const data = processFormData(form);
+    const formData = new FormData(form);
+    const data = {};
+    formData.forEach((value, key) => (data[key] = value));
 
-    // Sla cursusgegevens op als de 'vastzetten' checkbox is aangevinkt
+    console.log('Formulier data verzameld:', data); // Debug: vorm data
+
     if (data.vastzettenCheck) {
         savedCourseData = {
             cursus: data.cursus,
             cursusdatum: data.cursusdatum,
-            refreshercheck: data.refreshercheck,
+            refreshercheck: document.getElementById('refreshercheck').checked,
             'geldigheid-jaren': data['geldigheid-jaren'],
+            'geldigheid-datum-input': data['geldigheid-datum-input']
         };
+        console.log('Cursus data opgeslagen voor vastzetten:', savedCourseData); // Debug: saved data
     }
 
-    // Stuur de data naar de backend en verwerk het resultaat
     const result = await submitToAPI(data);
 
     if (result.success) {
         console.log('Succes! Data van de server:', result.data);
         showStatus('Formulier succesvol verzonden!', true);
         
-        // Reset het formulier en herstel de vastgezette gegevens
         form.reset();
         if (data.vastzettenCheck && savedCourseData) {
             document.getElementById('cursus').value = savedCourseData.cursus;
@@ -103,6 +87,10 @@ const handleFormSubmit = async (event) => {
             document.getElementById('refreshercheck').checked = savedCourseData.refreshercheck;
             document.getElementById('geldigheid-jaren').value = savedCourseData['geldigheid-jaren'];
             document.getElementById('vastzettenCheck').checked = true;
+            if (savedCourseData['geldigheid-jaren'] === 'custom') {
+                document.getElementById('geldigheid-datum-input').hidden = false;
+                document.getElementById('geldigheid-datum-input').value = savedCourseData['geldigheid-datum-input'];
+            }
         }
     } else {
         console.error('Fout bij het versturen:', result.message);
@@ -111,24 +99,17 @@ const handleFormSubmit = async (event) => {
     submitButton.disabled = false;
 };
 
-// Logica voor het tonen/verbergen van de custom datum input
-const handleGeldigheidChange = (event) => {
-    const datumInput = document.getElementById('geldigheid-datum-input');
-    if (datumInput) {
-        datumInput.hidden = event.target.value !== 'custom';
-    }
-};
-
-// Initialisatie van alle event listeners bij het laden van de pagina
 document.addEventListener('DOMContentLoaded', () => {
     const certificaatForm = document.getElementById('form-certificaat');
     const geldigheidDropdown = document.getElementById('geldigheid-jaren');
 
     if (certificaatForm) {
         certificaatForm.addEventListener('submit', handleFormSubmit);
+        console.log('Form submit event listener toegevoegd'); // Debug: event listener
     }
 
     if (geldigheidDropdown) {
         geldigheidDropdown.addEventListener('change', handleGeldigheidChange);
+        console.log('Geldigheid dropdown event listener toegevoegd'); // Debug: event listener
     }
 });
