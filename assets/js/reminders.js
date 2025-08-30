@@ -81,7 +81,7 @@ const fetchReminders = async () => {
     remindersList.innerHTML = '';
 
     try {
-        const response = await fetch('http://127.0.0.1:8000/api/v1/expiring-certificates/');
+        const response = await fetch('/api/v1/expiring-certificates/');
         if (!response.ok) {
             throw new Error('Netwerkrespons was niet ok');
         }
@@ -100,7 +100,7 @@ const fetchReminders = async () => {
 
 // De pingBackend functie kan ook hier staan, of in een apart gedeeld bestand als je wilt
 function pingBackend() {
-    fetch('http://127.0.0.1:8000/api/v1/ping/')
+    fetch('/api/v1/ping/')
     .then(response => response.json())
     .then(data => {
         alert(data.message);

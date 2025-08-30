@@ -22,7 +22,7 @@ const handleGeldigheidChange = (event) => {
 };
 
 const submitToAPI = async (data) => {
-    const url = 'http://127.0.0.1:8000/api/deelnemer-cursus/'; 
+    const url = '/api/v1/deelnemer-cursus/'; 
     try {
         const response = await fetch(url, {
             method: 'POST',

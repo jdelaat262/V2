@@ -1,0 +1,27 @@
+{% extends "page.html" %}
+
+{% block view %}
+
+<div class="center-container">
+    <h1 class="display-4 mb-2 text-center">QR Code Generator</h1>
+    <p class="lead text-center">Genereer een QR code voor deelnemersregistratie.</p>
+</div>
+
+<form id="qr-generator-form" class="mb-4" action="qr-code-page.html" method="get">
+    <h2 class="text mb-2">Gegevens voor QR Code</h2>
+    <p class="text mb-2">Voer de gegevens in die hard gecodeerd moeten worden in de QR code.</p>
+
+    <div class="mb-3">
+        <label for="qrCursus" class="form-label">Gebeurtenis of verzin zelf iets beters</label>
+        <input type="text" name="cursusNaam" class="form-control" id="qrCursus" placeholder="Cursus" required>
+    </div>
+    <div class="mb-3">
+        <label for="qrCursusdatum" class="form-label">Cursusdatum</label>
+        <input type="date" name="cursusdatum" class="form-control" id="qrCursusdatum" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Genereer QR Code</button>
+</form>
+
+
+{% endblock %}

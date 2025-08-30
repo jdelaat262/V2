@@ -1,0 +1,36 @@
+{% extends "page.html" %}
+{% load static %}
+
+{% block view %}
+
+<!-- De titel blijft buiten de center-container -->
+<h1 class="display-4 mb-2 text-center">Verlopende Certificaten</h1>
+
+<div class="center-container">
+    <!-- De div.main-content-block omvat nu alles binnen het zwarte blok -->
+    <div class="main-content-block">
+        <!-- De inleidende tekst is nu binnen de main-content-block geplaatst -->
+        <p class="lead text-center text-white mb-4">Hier vindt u een overzicht van certificaten die binnenkort verlopen.</p>
+
+        <div class="text-center my-4">
+            <button id="scanRemindersBtn" class="btn btn-primary">Scan op Verlopende Certificaten</button>
+        </div>
+
+        <!-- Hoofdrij voor de inhoud van de herinneringenpagina -->
+        <div class="row justify-content-center">
+            <div class="col-lg-12"> <!-- Pas de kolombreedte aan naar 12 om de hele breedte te benutten binnen main-content-block -->
+                <div class="table-responsive">
+                    <!-- De remindersList div heeft GEEN eigen achtergrond of padding meer, de ouder doet dat -->
+                    <div id="remindersList" class="mt-4"> 
+                        <!-- Verlopende certificaten worden hier geladen door JavaScript -->
+                        <p class="text-center text-white" id="loadingMessage">Klik op 'Scan op Verlopende Certificaten' om de lijst te laden.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/reminders.js' %}"></script> <!-- Link naar het JavaScript-bestand -->
+
+{% endblock %}
