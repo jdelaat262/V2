@@ -11,6 +11,7 @@ from .models import Cursus, Deelnemer
 from .serializers import DeelnemerSerializer, CursusSerializer
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from datetime import date, timedelta
 
 class DeelnemerViewSet(viewsets.ModelViewSet):
     queryset = Deelnemer.objects.all()
@@ -100,7 +101,54 @@ def create_deelnemer_and_cursus(request):
         
         print("Errors geretourneerd:", errors)
         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def get_expiring_certificates(request):
+    from datetime import date, timedelta
+    
+    # Aantal dagen uit query parameter (default 30)
+    days = int(request.GET.get('days', 30))
+    expiry_date = date.today() + timedelta(days=days)
+    
+    # Vind alle cursussen die binnen X dagen verlopen
+    expiring_cursussen = Cursus.objects.filter(
+        geldigheid_datum__lte=expiry_date,
+        geldigheid_datum__gte=date.today()
+    ).select_related().prefetch_related('deelnemers')
+    
+    results = []
+    for cursus in expiring_cursussen:
+        for deelnemer in cursus.deelnemers.all():
+            if deelnemer.email:  # Alleen met email
+                results.append({
+                    'deelnemer_id': deelnemer.id,
+                    'cursus_id': cursus.id,
+                    'naam': f"{deelnemer.voornaam} {deelnemer.achternaam}",
+                    'email': deelnemer.email,
+                    'cursus': cursus.cursus,
+                    'expiry_date': cursus.geldigheid_datum,
+                    'days_remaining': (cursus.geldigheid_datum - date.today()).days
+                })
+    
+    return Response(results)
 
+@api_view(['POST'])
+def send_expiry_reminders(request):
+    # Ontvangt lijst van deelnemer/cursus IDs
+    reminder_list = request.data.get('reminders', [])
+    
+    for item in reminder_list:
+        deelnemer = Deelnemer.objects.get(id=item['deelnemer_id'])
+        cursus = Cursus.objects.get(id=item['cursus_id'])
+        
+        # Email content
+        subject = f"Reminder: Je certificaat voor {cursus.cursus} verloopt binnenkort"
+        body = f"Beste {deelnemer.voornaam},\n\nJe certificaat voor {cursus.cursus} verloopt op {cursus.geldigheid_datum}..."
+        
+        email = EmailMessage(subject, body, settings.EMAIL_HOST_USER, [deelnemer.email])
+        email.send()
+    
+    return Response({"sent": len(reminder_list)})
 
 # CERTIFICAAT GENERATIE VIEWS
 @api_view(['GET'])
