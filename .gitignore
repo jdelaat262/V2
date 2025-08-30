@@ -1,0 +1,5 @@
+/.vscode
+.nova
+.DS_Store
+*.pem
+*.crt
