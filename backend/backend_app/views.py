@@ -9,7 +9,8 @@ from django.conf import settings
 from weasyprint import HTML
 from .models import Cursus, Deelnemer
 from .serializers import DeelnemerSerializer, CursusSerializer
-
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 class DeelnemerViewSet(viewsets.ModelViewSet):
     queryset = Deelnemer.objects.all()
@@ -25,15 +26,31 @@ def ping_view(request):
 
 @api_view(['POST'])
 def create_deelnemer_and_cursus(request):
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+    
     print("=== DEBUG START ===")
     print("Alle ontvangen data:", request.data)
     
+    # Bereken geldigheid_datum
+    cursusdatum_str = request.data.get('cursusdatum')
+    geldigheid_jaren_str = request.data.get('geldigheid-jaren')
+    geldigheid_datum_custom = request.data.get('geldigheid-datum-input')
+    
+    geldigheid_datum = None
+    if geldigheid_jaren_str == 'custom' and geldigheid_datum_custom:
+        geldigheid_datum = geldigheid_datum_custom
+    elif cursusdatum_str and geldigheid_jaren_str and geldigheid_jaren_str.isdigit():
+        cursusdatum = datetime.strptime(cursusdatum_str, '%Y-%m-%d').date()
+        jaren = int(geldigheid_jaren_str)
+        geldigheid_datum = cursusdatum + relativedelta(years=jaren)
+    
     cursus_data = {
         'cursus': request.data.get('cursus'),
-        'cursusdatum': request.data.get('cursusdatum') if request.data.get('cursusdatum') else None,
+        'cursusdatum': cursusdatum_str if cursusdatum_str else None,
         'refresher': request.data.get('refreshercheck') == 'on',
-        'geldigheid_jaren': request.data.get('geldigheid-jaren') if request.data.get('geldigheid-jaren') != 'Kies...' else None,
-        'geldigheid_datum': request.data.get('geldigheid-datum-input') if request.data.get('geldigheid-jaren') == 'custom' and request.data.get('geldigheid-datum-input') else None
+        'geldigheid_jaren': geldigheid_jaren_str if geldigheid_jaren_str != 'Kies...' else None,
+        'geldigheid_datum': geldigheid_datum
     }
     
     deelnemer_data = {
