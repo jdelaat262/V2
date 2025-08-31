@@ -127,14 +127,17 @@ def get_expiring_certificates(request):
     for cursus in expiring_cursussen:
         for deelnemer in cursus.deelnemers.all():
             if deelnemer.email:  # Alleen met email
+                # Gebruik de 'join' en 'filter' logica om de naam correct op te bouwen
+                name_parts = [deelnemer.voornaam, deelnemer.tussenvoegsel, deelnemer.achternaam]
+                full_name = " ".join(filter(None, name_parts))
+                
                 results.append({
                     'deelnemer_id': deelnemer.id,
                     'cursus_id': cursus.id,
-                    'naam': f"{deelnemer.voornaam} {deelnemer.achternaam}",
+                    'naam': full_name, # <-- Aangepast
                     'email': deelnemer.email,
                     'cursus': cursus.cursus,
                     'expiry_date': cursus.geldigheid_datum,
-                    'days_remaining': (cursus.geldigheid_datum - date.today()).days
                 })
     
     return Response(results)
