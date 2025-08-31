@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const directLink = document.getElementById('directLink');
         if (directLink) {
             directLink.href = qrUrl;
-            directLink.textContent = qrUrl;
         }
 
         console.log("QR Code gegenereerd met URL:", qrUrl);
