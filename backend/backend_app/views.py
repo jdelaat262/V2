@@ -15,7 +15,8 @@ from .serializers import DeelnemerSerializer, CursusSerializer
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from datetime import date, timedelta
-import json  # Importeer json
+import json  
+from django.db import transaction
 
 @method_decorator(csrf_exempt, name='dispatch')  # TOEGEVOEGD
 class DeelnemerViewSet(viewsets.ModelViewSet):
@@ -30,16 +31,16 @@ def ping_view(request):
     return JsonResponse({"status": "Backend is bereikbaar!"})
 
 
-@csrf_exempt  # TOEGEVOEGD
+# backend_app/views.py
+
+@csrf_exempt
 @api_view(['POST'])
 def create_deelnemer_and_cursus(request):
     from datetime import datetime
     from dateutil.relativedelta import relativedelta
     
     print("=== DEBUG START ===")
-    print("Alle ontvangen data:", request.data)
     
-    # Bereken geldigheid_datum
     cursusdatum_str = request.data.get('cursusdatum')
     geldigheid_jaren_str = request.data.get('geldigheid-jaren')
     geldigheid_datum_custom = request.data.get('geldigheid-datum-input')
@@ -60,53 +61,50 @@ def create_deelnemer_and_cursus(request):
         'geldigheid_datum': geldigheid_datum
     }
     
-    deelnemer_data = {
-        'aanhef': request.data.get('aanhef'),
-        'voornaam': request.data.get('voornaam') if request.data.get('voornaam') else None,
-        'tussenvoegsel': request.data.get('tussenvoegsel') if request.data.get('tussenvoegsel') else None,
-        'achternaam': request.data.get('achternaam') if request.data.get('achternaam') else None,
-        'bedrijfsnaam': request.data.get('bedrijfsnaam') if request.data.get('bedrijfsnaam') else None,
-        'email': request.data.get('email') if request.data.get('email') else None,
-        'geboortedatum': request.data.get('geboortedatum') if request.data.get('geboortedatum') else None,
-        'telefoonnummer': request.data.get('telefoonnummer') if request.data.get('telefoonnummer') else None,
-        'windaId': request.data.get('windaId') if request.data.get('windaId') else None
-    }
-
-    print("Cursus data opgebouwd:", cursus_data)
-    print("Deelnemer data opgebouwd:", deelnemer_data)
-
+    # We gebruiken de serializer om de data te verwerken en te valideren
     cursus_serializer = CursusSerializer(data=cursus_data)
-    deelnemer_serializer = DeelnemerSerializer(data=deelnemer_data)
 
-    print("Cursus serializer valid?", cursus_serializer.is_valid())
-    print("Cursus serializer errors:", cursus_serializer.errors)
-    print("Deelnemer serializer valid?", deelnemer_serializer.is_valid())
-    print("Deelnemer serializer errors:", deelnemer_serializer.errors)
+    # We controleren alleen of de cursusgegevens valide zijn
+    if cursus_serializer.is_valid():
+        try:
+            with transaction.atomic():
+                cursus_instance = cursus_serializer.save()
 
-    if cursus_serializer.is_valid() and deelnemer_serializer.is_valid():
-        cursus_instance = cursus_serializer.save()
-        deelnemer_instance = deelnemer_serializer.save()
-        print("Cursus instance aangemaakt:", cursus_instance)
-        print("Deelnemer instance aangemaakt:", deelnemer_instance)
-        
-        cursus_instance.deelnemers.add(deelnemer_instance)
-        print("Koppeling gemaakt!")
-        
-        response_data = {
-            "cursus_data": cursus_serializer.data,
-            "deelnemer_data": deelnemer_serializer.data
-        }
-        
-        return Response(response_data, status=status.HTTP_201_CREATED)
+                # Gebruik update_or_create om duplicaten te voorkomen
+                deelnemer_instance, created = Deelnemer.objects.update_or_create(
+                    voornaam=request.data.get('voornaam'),
+                    achternaam=request.data.get('achternaam'),
+                    geboortedatum=request.data.get('geboortedatum'),
+                    defaults={
+                        'aanhef': request.data.get('aanhef'),
+                        'tussenvoegsel': request.data.get('tussenvoegsel'),
+                        'bedrijfsnaam': request.data.get('bedrijfsnaam'),
+                        'email': request.data.get('email'),
+                        'telefoonnummer': request.data.get('telefoonnummer'),
+                        'windaId': request.data.get('windaId')
+                    }
+                )
+                
+                if created:
+                    print("Nieuwe deelnemer aangemaakt:", deelnemer_instance)
+                else:
+                    print("Bestaande deelnemer bijgewerkt:", deelnemer_instance)
+
+                cursus_instance.deelnemers.add(deelnemer_instance)
+                print("Koppeling gemaakt!")
+
+                response_data = {
+                    "cursus_data": cursus_serializer.data,
+                    "deelnemer_data": DeelnemerSerializer(deelnemer_instance).data
+                }
+                
+                return Response(response_data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            print("Fout bij aanmaken/bijwerken:", str(e))
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
-        errors = {}
-        if not cursus_serializer.is_valid():
-            errors['cursus_errors'] = cursus_serializer.errors
-        if not deelnemer_serializer.is_valid():
-            errors['deelnemer_errors'] = deelnemer_serializer.errors
-        
-        print("Errors geretourneerd:", errors)
-        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+        print("Errors geretourneerd:", cursus_serializer.errors)
+        return Response(cursus_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 @csrf_exempt  # TOEGEVOEGD
 @api_view(['GET'])
