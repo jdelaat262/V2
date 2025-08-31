@@ -33,12 +33,28 @@ def ping_view(request):
 
 # backend_app/views.py
 
+# backend_app/views.py
+
+from rest_framework import viewsets, status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
+from django.http import HttpResponse, JsonResponse
+from django.core.mail import EmailMessage
+from django.conf import settings
+from weasyprint import HTML
+from .models import Cursus, Deelnemer
+from .serializers import DeelnemerSerializer, CursusSerializer
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from datetime import date, timedelta
+from django.db import transaction
+import json
+
 @csrf_exempt
 @api_view(['POST'])
 def create_deelnemer_and_cursus(request):
-    from datetime import datetime
-    from dateutil.relativedelta import relativedelta
-    
     print("=== DEBUG START ===")
     
     cursusdatum_str = request.data.get('cursusdatum')
@@ -61,28 +77,39 @@ def create_deelnemer_and_cursus(request):
         'geldigheid_datum': geldigheid_datum
     }
     
-    # We gebruiken de serializer om de data te verwerken en te valideren
-    cursus_serializer = CursusSerializer(data=cursus_data)
+    deelnemer_data = {
+        'aanhef': request.data.get('aanhef') or None,
+        'voornaam': request.data.get('voornaam') or None,
+        'tussenvoegsel': request.data.get('tussenvoegsel') or None,
+        'achternaam': request.data.get('achternaam') or None,
+        'bedrijfsnaam': request.data.get('bedrijfsnaam') or None,
+        'email': request.data.get('email') or None,
+        'geboortedatum': request.data.get('geboortedatum') or None,
+        'telefoonnummer': request.data.get('telefoonnummer') or None,
+        'windaId': request.data.get('windaId') or None
+    }
 
-    # We controleren alleen of de cursusgegevens valide zijn
+    print("Cursus data opgebouwd:", cursus_data)
+    print("Deelnemer data opgebouwd:", deelnemer_data)
+
+    cursus_serializer = CursusSerializer(data=cursus_data)
+    deelnemer_serializer = DeelnemerSerializer(data=deelnemer_data)
+
+    print("Cursus serializer valid?", cursus_serializer.is_valid())
+    print("Cursus serializer errors:", cursus_serializer.errors)
+    print("Deelnemer serializer valid?", deelnemer_serializer.is_valid())
+    print("Deelnemer serializer errors:", deelnemer_serializer.errors)
+
     if cursus_serializer.is_valid():
         try:
             with transaction.atomic():
                 cursus_instance = cursus_serializer.save()
 
-                # Gebruik update_or_create om duplicaten te voorkomen
                 deelnemer_instance, created = Deelnemer.objects.update_or_create(
                     voornaam=request.data.get('voornaam'),
                     achternaam=request.data.get('achternaam'),
                     geboortedatum=request.data.get('geboortedatum'),
-                    defaults={
-                        'aanhef': request.data.get('aanhef'),
-                        'tussenvoegsel': request.data.get('tussenvoegsel'),
-                        'bedrijfsnaam': request.data.get('bedrijfsnaam'),
-                        'email': request.data.get('email'),
-                        'telefoonnummer': request.data.get('telefoonnummer'),
-                        'windaId': request.data.get('windaId')
-                    }
+                    defaults=deelnemer_data
                 )
                 
                 if created:
