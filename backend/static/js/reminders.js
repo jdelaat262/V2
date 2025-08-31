@@ -22,9 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const renderRemindersTable = (reminders) => { // <-- Geen container als argument
-        const container = document.getElementById('remindersList'); // <-- Ophalen binnen de functie
+    const renderRemindersTable = (reminders) => {
+        const container = document.getElementById('remindersList');
         container.innerHTML = '';
+        
         if (reminders.length === 0) {
             container.innerHTML = '<p class="text-center text-white">Geen certificaten gevonden die binnenkort verlopen. Alles is up-to-date!</p>';
             return;
@@ -49,22 +50,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const tbody = table.querySelector('tbody');
         reminders.forEach(item => {
             const row = document.createElement('tr');
+            
             row.innerHTML = `
                 <td>${item.naam}</td>
                 <td>${item.email}</td>
                 <td>${item.cursus}</td>
                 <td>${item.expiry_date}</td>
-                <td><input type="checkbox" class="form-check-input reminder-checkbox" data-deelnemer-id="${item.deelnemer_id}" data-cursus-id="${item.cursus_id}"></td>
+                <td><input type="checkbox" class="form-check-input reminder-checkbox" 
+                    data-deelnemer-id="${item.deelnemer_id}" 
+                    data-cursus-id="${item.cursus_id}"></td>
             `;
             tbody.appendChild(row);
         });
 
         container.appendChild(table);
         
+        // Verstuur Reminders knop
         const sendReminderBtn = document.createElement('button');
         sendReminderBtn.id = 'sendReminderBtn';
         sendReminderBtn.classList.add('btn', 'btn-primary', 'mt-3');
-        sendReminderBtn.textContent = 'Verstuur Reminders';
+        sendReminderBtn.textContent = 'Verstuur Geselecteerde Reminders';
         sendReminderBtn.style.display = 'none';
         container.appendChild(sendReminderBtn);
     };
@@ -121,6 +126,17 @@ document.addEventListener('DOMContentLoaded', () => {
             cursus_id: checkbox.dataset.cursusId
         }));
 
+        if (reminders.length === 0) {
+            showStatus('Geen reminders geselecteerd om te versturen.', false);
+            return;
+        }
+
+        // Disable button tijdens verzenden
+        const sendBtn = document.getElementById('sendReminderBtn');
+        const originalText = sendBtn.textContent;
+        sendBtn.textContent = 'Verzenden...';
+        sendBtn.disabled = true;
+
         try {
             const response = await fetch('http://127.0.0.1:8000/api/v1/send-expiry-reminders/', {
                 method: 'POST',
@@ -129,13 +145,26 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (response.ok) {
-                showStatus(`${reminders.length} reminder(s) verzonden!`, true);
+                const result = await response.json();
+                showStatus(`${result.sent} reminder(s) succesvol verzonden!`, true);
+                
+                // Auto-refresh de lijst (toon alleen niet-verzonden reminders)
+                setTimeout(() => {
+                    fetchReminders();
+                }, 1000);
+            } else {
+                throw new Error('Server error bij verzenden');
             }
         } catch (error) {
-            showStatus('Fout bij versturen reminders', false);
+            showStatus('Fout bij versturen reminders: ' + error.message, false);
+        } finally {
+            // Re-enable button
+            sendBtn.textContent = originalText;
+            sendBtn.disabled = false;
         }
     };
 
+    // Event listeners
     const scanRemindersBtn = document.getElementById('scanRemindersBtn');
     const remindersList = document.getElementById('remindersList');
 
@@ -149,6 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleSendReminderButton();
             }
         });
+        
         remindersList.addEventListener('click', async (event) => {
             if (event.target.id === 'sendReminderBtn') {
                 await sendSelectedReminders();

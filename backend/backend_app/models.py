@@ -7,11 +7,15 @@ class Cursus(models.Model):
     refresher = models.BooleanField(default=False)
     geldigheid_jaren = models.CharField(max_length=50, blank=True, null=True)
     geldigheid_datum = models.DateField(blank=True, null=True)
+    reminder_sent = models.BooleanField(default=False)
     deelnemers = models.ManyToManyField(
         'Deelnemer',
         related_name='cursussen',
         blank=True
     )
+    
+
+
     class Meta:
         verbose_name_plural = "Cursussen"
     def __str__(self):

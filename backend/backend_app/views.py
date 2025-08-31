@@ -117,27 +117,33 @@ def get_expiring_certificates(request):
     days = int(request.GET.get('days', 30))
     expiry_date = date.today() + timedelta(days=days)
     
+    # Check if we should show sent reminders too
+    show_sent = request.GET.get('show_sent', 'false').lower() == 'true'
+    
     # Vind alle cursussen die binnen X dagen verlopen
-    expiring_cursussen = Cursus.objects.filter(
-        geldigheid_datum__lte=expiry_date,
-        geldigheid_datum__gte=date.today()
-    ).select_related().prefetch_related('deelnemers')
+    filter_criteria = {
+        'geldigheid_datum__lte': expiry_date,
+        'geldigheid_datum__gte': date.today()
+    }
+    
+    # Add reminder_sent filter if we don't want to show sent reminders
+    if not show_sent:
+        filter_criteria['reminder_sent'] = False
+    
+    expiring_cursussen = Cursus.objects.filter(**filter_criteria).select_related().prefetch_related('deelnemers')
     
     results = []
     for cursus in expiring_cursussen:
         for deelnemer in cursus.deelnemers.all():
             if deelnemer.email:  # Alleen met email
-                # Gebruik de 'join' en 'filter' logica om de naam correct op te bouwen
-                name_parts = [deelnemer.voornaam, deelnemer.tussenvoegsel, deelnemer.achternaam]
-                full_name = " ".join(filter(None, name_parts))
-                
                 results.append({
                     'deelnemer_id': deelnemer.id,
                     'cursus_id': cursus.id,
-                    'naam': full_name, # <-- Aangepast
+                    'naam': f"{deelnemer.voornaam} {deelnemer.achternaam}",
                     'email': deelnemer.email,
                     'cursus': cursus.cursus,
                     'expiry_date': cursus.geldigheid_datum,
+                    'days_remaining': (cursus.geldigheid_datum - date.today()).days
                 })
     
     return Response(results)
@@ -147,6 +153,7 @@ def get_expiring_certificates(request):
 def send_expiry_reminders(request):
     # Ontvangt lijst van deelnemer/cursus IDs
     reminder_list = request.data.get('reminders', [])
+    sent_count = 0
     
     try:
         for item in reminder_list:
@@ -163,8 +170,13 @@ def send_expiry_reminders(request):
 
             email = EmailMessage(subject, body, settings.EMAIL_HOST_USER, [deelnemer.email])
             email.send()
+            
+            # NIEUW: Markeer cursus als reminder verzonden
+            cursus.reminder_sent = True
+            cursus.save()
+            sent_count += 1
         
-        return Response({"sent": len(reminder_list)}, status=status.HTTP_200_OK)
+        return Response({"sent": sent_count}, status=status.HTTP_200_OK)
     
     except Deelnemer.DoesNotExist:
         return Response({"error": "Deelnemer niet gevonden."}, status=status.HTTP_404_NOT_FOUND)
