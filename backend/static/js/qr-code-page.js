@@ -3,29 +3,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const cursusNaam = urlParams.get('cursusNaam');
     const cursusdatum = urlParams.get('cursusdatum');
-    
 
     if (cursusNaam && cursusdatum) {
         // Bouw de URL die in de QR-code gecodeerd wordt
-        const qrUrl = `http://192.168.1.161:8001/qr-scan-form.html?cursusNaam=${cursusNaam}&cursusdatum=${cursusdatum}`;
+        // Gebruik window.location.origin om dynamisch het correcte host en poort te pakken
+        const qrUrl = `${window.location.origin}/qr-scan/?cursusNaam=${encodeURIComponent(cursusNaam)}&cursusdatum=${cursusdatum}`;
 
         // Genereer de QR-code
         const qrcodeContainer = document.getElementById('qrcodeDisplay');
-        qrcodeContainer.innerHTML = ''; // Leeg de container eerst
-        const qrcode = new QRCode(qrcodeContainer, {
-            text: qrUrl,
-            width: 256,
-            height: 256,
-            colorDark: "#000000",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-        });
-
-        // Update de link
+        if (qrcodeContainer) {
+            qrcodeContainer.innerHTML = ''; // Leeg de container eerst
+            const qrcode = new QRCode(qrcodeContainer, {
+                text: qrUrl,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+        
+        // Update de directe link
         const directLink = document.getElementById('directLink');
-        directLink.href = qrUrl;
-        directLink.textContent = qrUrl;
-        directLink.textContent = 'hier';
+        if (directLink) {
+            directLink.href = qrUrl;
+            directLink.textContent = qrUrl;
+        }
 
         console.log("QR Code gegenereerd met URL:", qrUrl);
     } else {

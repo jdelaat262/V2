@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const baseUrl = `${window.location.origin}/qr-code-page.html`;
+            const baseUrl = `${window.location.origin}/qr-code/`;
             const params = new URLSearchParams({
                 cursusNaam: encodeURIComponent(cursusNaam), // <-- Hier is de aanpassing!
                 cursusdatum: cursusdatum
