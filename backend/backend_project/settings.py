@@ -50,10 +50,16 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://192.168.1.35:8000",  # Je hebt dit IP ook in ALLOWED_HOSTS
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -64,11 +70,18 @@ CORS_ALLOWED_ORIGINS = [
 
 ROOT_URLCONF = 'backend_project.urls'
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+}
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],  # Of ['templates'] als je een globale templates dir hebt
-        'APP_DIRS': True,  # Dit moet True zijn!
+        'DIRS': [BASE_DIR / 'templates'],  
+        'APP_DIRS': True,  
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -141,3 +154,7 @@ EMAIL_PORT = 587                       # Of 465
 EMAIL_USE_TLS = True                   # Of EMAIL_USE_SSL = True
 EMAIL_HOST_USER = 'jdelaat1@gmail.com'
 EMAIL_HOST_PASSWORD = 'dckj hnpk msya lqcm'
+
+
+CSRF_COOKIE_HTTPONLY = False
+CSRF_USE_SESSIONS = False

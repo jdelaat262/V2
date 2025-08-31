@@ -7,6 +7,8 @@ from django.http import HttpResponse, JsonResponse
 from django.core.mail import EmailMessage
 from django.core.mail import send_mail  # Importeer send_mail
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt  # TOEGEVOEGD
+from django.utils.decorators import method_decorator  # TOEGEVOEGD
 from weasyprint import HTML
 from .models import Cursus, Deelnemer
 from .serializers import DeelnemerSerializer, CursusSerializer
@@ -15,6 +17,7 @@ from dateutil.relativedelta import relativedelta
 from datetime import date, timedelta
 import json  # Importeer json
 
+@method_decorator(csrf_exempt, name='dispatch')  # TOEGEVOEGD
 class DeelnemerViewSet(viewsets.ModelViewSet):
     queryset = Deelnemer.objects.all()
     serializer_class = DeelnemerSerializer
@@ -27,6 +30,7 @@ def ping_view(request):
     return JsonResponse({"status": "Backend is bereikbaar!"})
 
 
+@csrf_exempt  # TOEGEVOEGD
 @api_view(['POST'])
 def create_deelnemer_and_cursus(request):
     from datetime import datetime
@@ -104,6 +108,7 @@ def create_deelnemer_and_cursus(request):
         print("Errors geretourneerd:", errors)
         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
     
+@csrf_exempt  # TOEGEVOEGD
 @api_view(['GET'])
 def get_expiring_certificates(request):
     from datetime import date, timedelta
@@ -134,6 +139,7 @@ def get_expiring_certificates(request):
     
     return Response(results)
 
+@csrf_exempt  # TOEGEVOEGD
 @api_view(['POST'])
 def send_expiry_reminders(request):
     # Ontvangt lijst van deelnemer/cursus IDs
@@ -165,6 +171,7 @@ def send_expiry_reminders(request):
         return Response({"error": f"Fout bij het versturen van de e-mail: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # CERTIFICAAT GENERATIE VIEWS
+@csrf_exempt  # TOEGEVOEGD
 @api_view(['GET'])
 def generate_certificate_pdf(request, deelnemer_id, cursus_id):
     """
@@ -196,6 +203,7 @@ def generate_certificate_pdf(request, deelnemer_id, cursus_id):
         return HttpResponse(f"Fout bij het genereren van het certificaat: {str(e)}", status=500)
 
 
+@csrf_exempt  # TOEGEVOEGD
 @api_view(['GET'])
 def preview_certificate_html(request, deelnemer_id, cursus_id):
     """
@@ -224,6 +232,7 @@ def preview_certificate_html(request, deelnemer_id, cursus_id):
         return HttpResponse(f"Fout bij het genereren van de preview: {str(e)}", status=500)
 
 
+@csrf_exempt  # TOEGEVOEGD
 @api_view(['POST'])
 def send_certificate_email(request, deelnemer_id, cursus_id):
     """

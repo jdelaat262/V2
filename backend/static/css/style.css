@@ -1,0 +1,169 @@
+.navbar-brand{
+    font-weight: bold;
+}
+/*navbar kleur */
+.bg-gold-custom {
+    background-color: #FFD700; 
+}
+
+h1{
+text-align: center;
+}
+
+.container {
+        width: auto;
+        max-width: 100%;
+    }
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #FFFFFF; 
+    align-items: center;
+    flex-direction: column;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding-top: 70px;
+    }
+.btn-primary {
+      background-color: #FFD700; 
+      border-color: #FFD700;
+      border-radius: 0.5rem;
+      color: #000; 
+      transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+      margin-top: 1rem;
+      text-align: center;
+    }
+.btn-primary:hover {
+      background-color: #e6c200; /* Iets donkerder goud bij hover */
+      border-color: #e6c200;
+      box-shadow: 0 0.25rem 0.5rem rgba(255, 215, 0, 0.25); /* Gouden schaduw bij hover */
+      color: #000; 
+    }
+
+
+form{
+    background-color: black;
+    color: white;
+    width: 95%;
+    max-width: 600px; 
+    padding: 20px;
+    margin-top: 1rem;
+    border-radius: 1rem;
+}
+
+#aanhef {
+    font-family: 'Inter', sans-serif;
+    color: white;
+    margin-bottom: 0.5rem;
+}
+.radio-aanhef {
+    display: flex; 
+    gap: 1.0rem;   
+    }
+
+.test-knop {
+  background-color: #FFD700;
+  border: 1px solid #FFD700; /* Gebruik een duidelijke border */
+  border-radius: 0.5rem;
+  color: #000;
+  padding: 0.75rem 1.5rem; /* Voeg padding toe voor meer ruimte binnenin */
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+/* Voeg een hover-effect toe voor een professionele look */
+.test-knop:hover {
+  background-color: #e6c800; /* Iets donkerdere kleur bij hover */
+  border-color: #e6c800;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Puur voor het formulier 'Reminders'  */
+.main-content-block { 
+    background-color: black;
+    color: white;
+    width: 95%;
+    max-width: 600px; 
+    padding: 20px;
+    margin:0 auto;
+    margin-top: 1rem;
+    border-radius: 1rem;
+}
+
+/* Custom styles for the modal */
+        .qr-modal .modal-content {
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: none;
+        }
+        .qr-modal .modal-header {
+            background-color: #f8f9fa; /* Light background for header */
+            border-bottom: none;
+            padding: 1.5rem;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+        }
+        .qr-modal .modal-title {
+            color: #343a40;
+            font-weight: bold;
+        }
+        .qr-modal .modal-body {
+            padding: 2rem;
+            text-align: center;
+        }
+        .qr-modal .modal-body p {
+            font-size: 1.1em;
+            color: #555;
+            margin-top: 1rem;
+        }
+        .qr-modal .modal-footer {
+            border-top: none;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 10px; /* Space between buttons */
+            border-bottom-left-radius: 15px;
+            border-bottom-right-radius: 15px;
+        }
+        .qr-modal .modal-footer .btn {
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: 600;
+        }
+
+.card {
+    background-color: white;
+    border: none
+}
+
+/* qr code afbeelding */
+.card h1, .card p, .card a, .card .lead {
+    color: black;
+}
+
+#saveQrCodeBtn,
+#shareQrCodeBtn {
+  min-width: 150px; 
+  background-color: #FFD700;
+  border: 1px solid #FFD700; /* Gebruik een duidelijke border */
+  border-radius: 0.5rem;
+  color: #000;
+  padding: 0.75rem 1.5rem; /* Voeg padding toe voor meer ruimte binnenin */
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+#saveQrCodeBtn:hover,
+#shareQrCodeBtn:hover {
+    transform: scale(1.05); /* Laat de knop iets groter worden */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Voeg een subtiele schaduw toe */
+    cursor: pointer; /* Verander de muiscursor naar een handje */
+}
