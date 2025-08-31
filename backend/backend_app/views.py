@@ -1,3 +1,5 @@
+# backend_app/views.py
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -5,52 +7,28 @@ from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.http import HttpResponse, JsonResponse
 from django.core.mail import EmailMessage
-from django.core.mail import send_mail  # Importeer send_mail
+from django.core.mail import send_mail
 from django.conf import settings
-from django.views.decorators.csrf import csrf_exempt  # TOEGEVOEGD
-from django.utils.decorators import method_decorator  # TOEGEVOEGD
+from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
 from weasyprint import HTML
 from .models import Cursus, Deelnemer
 from .serializers import DeelnemerSerializer, CursusSerializer
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
-from datetime import date, timedelta
-import json  
-from django.db import transaction
+import json
+import socket
 
-@method_decorator(csrf_exempt, name='dispatch')  # TOEGEVOEGD
 class DeelnemerViewSet(viewsets.ModelViewSet):
     queryset = Deelnemer.objects.all()
     serializer_class = DeelnemerSerializer
 
-
+@api_view(['GET'])
 def ping_view(request):
     """
     Simpele view die een JSON-respons terugstuurt om de verbinding te testen.
     """
     return JsonResponse({"status": "Backend is bereikbaar!"})
-
-
-# backend_app/views.py
-
-# backend_app/views.py
-
-from rest_framework import viewsets, status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404, render
-from django.template.loader import render_to_string
-from django.http import HttpResponse, JsonResponse
-from django.core.mail import EmailMessage
-from django.conf import settings
-from weasyprint import HTML
-from .models import Cursus, Deelnemer
-from .serializers import DeelnemerSerializer, CursusSerializer
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-from datetime import date, timedelta
-from django.db import transaction
-import json
 
 @csrf_exempt
 @api_view(['POST'])
@@ -100,15 +78,15 @@ def create_deelnemer_and_cursus(request):
     print("Deelnemer serializer valid?", deelnemer_serializer.is_valid())
     print("Deelnemer serializer errors:", deelnemer_serializer.errors)
 
-    if cursus_serializer.is_valid():
+    if cursus_serializer.is_valid() and deelnemer_serializer.is_valid():
         try:
             with transaction.atomic():
                 cursus_instance = cursus_serializer.save()
 
                 deelnemer_instance, created = Deelnemer.objects.update_or_create(
-                    voornaam=request.data.get('voornaam'),
-                    achternaam=request.data.get('achternaam'),
-                    geboortedatum=request.data.get('geboortedatum'),
+                    voornaam=deelnemer_data['voornaam'],
+                    achternaam=deelnemer_data['achternaam'],
+                    geboortedatum=deelnemer_data['geboortedatum'],
                     defaults=deelnemer_data
                 )
                 
@@ -130,28 +108,29 @@ def create_deelnemer_and_cursus(request):
             print("Fout bij aanmaken/bijwerken:", str(e))
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
-        print("Errors geretourneerd:", cursus_serializer.errors)
-        return Response(cursus_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-@csrf_exempt  # TOEGEVOEGD
+        errors = {}
+        if not cursus_serializer.is_valid():
+            errors['cursus_errors'] = cursus_serializer.errors
+        if not deelnemer_serializer.is_valid():
+            errors['deelnemer_errors'] = deelnemer_serializer.errors
+        
+        print("Errors geretourneerd:", errors)
+        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
 @api_view(['GET'])
 def get_expiring_certificates(request):
     from datetime import date, timedelta
     
-    # Aantal dagen uit query parameter (default 30)
     days = int(request.GET.get('days', 30))
     expiry_date = date.today() + timedelta(days=days)
     
-    # Check if we should show sent reminders too
     show_sent = request.GET.get('show_sent', 'false').lower() == 'true'
     
-    # Vind alle cursussen die binnen X dagen verlopen
     filter_criteria = {
         'geldigheid_datum__lte': expiry_date,
         'geldigheid_datum__gte': date.today()
     }
     
-    # Add reminder_sent filter if we don't want to show sent reminders
     if not show_sent:
         filter_criteria['reminder_sent'] = False
     
@@ -160,7 +139,7 @@ def get_expiring_certificates(request):
     results = []
     for cursus in expiring_cursussen:
         for deelnemer in cursus.deelnemers.all():
-            if deelnemer.email:  # Alleen met email
+            if deelnemer.email:
                 results.append({
                     'deelnemer_id': deelnemer.id,
                     'cursus_id': cursus.id,
@@ -173,10 +152,8 @@ def get_expiring_certificates(request):
     
     return Response(results)
 
-@csrf_exempt  # TOEGEVOEGD
 @api_view(['POST'])
 def send_expiry_reminders(request):
-    # Ontvangt lijst van deelnemer/cursus IDs
     reminder_list = request.data.get('reminders', [])
     sent_count = 0
     
@@ -185,18 +162,15 @@ def send_expiry_reminders(request):
             deelnemer = get_object_or_404(Deelnemer, id=item['deelnemer_id'])
             cursus = get_object_or_404(Cursus, id=item['cursus_id'])
             
-            # Email content
             subject = f"Herinnering: Je certificaat voor {cursus.cursus} verloopt binnenkort"
             body = f"Beste {deelnemer.voornaam},\n\nJe certificaat voor {cursus.cursus} verloopt op {cursus.geldigheid_datum.strftime('%d-%m-%Y')}. \n\nMet vriendelijke groet,\nSafetyPro"
             
-            # Controleer of e-mailadres niet leeg is
             if not deelnemer.email:
                 continue
 
             email = EmailMessage(subject, body, settings.EMAIL_HOST_USER, [deelnemer.email])
             email.send()
             
-            # NIEUW: Markeer cursus als reminder verzonden
             cursus.reminder_sent = True
             cursus.save()
             sent_count += 1
@@ -210,16 +184,10 @@ def send_expiry_reminders(request):
     except Exception as e:
         return Response({"error": f"Fout bij het versturen van de e-mail: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# CERTIFICAAT GENERATIE VIEWS
-@csrf_exempt  # TOEGEVOEGD
 @api_view(['GET'])
 def generate_certificate_pdf(request, deelnemer_id, cursus_id):
-    """
-    Genereert een PDF-certificaat voor een specifieke deelnemer en cursus.
-    """
     try:
         deelnemer = get_object_or_404(Deelnemer, pk=deelnemer_id)
-        # Zoek de specifieke cursus die bij de deelnemer hoort
         cursus = deelnemer.cursussen.get(pk=cursus_id)
         
         context = {
@@ -242,16 +210,10 @@ def generate_certificate_pdf(request, deelnemer_id, cursus_id):
     except Exception as e:
         return HttpResponse(f"Fout bij het genereren van het certificaat: {str(e)}", status=500)
 
-
-@csrf_exempt  # TOEGEVOEGD
 @api_view(['GET'])
 def preview_certificate_html(request, deelnemer_id, cursus_id):
-    """
-    Toont een HTML-preview van het certificaat in de browser.
-    """
     try:
         deelnemer = get_object_or_404(Deelnemer, pk=deelnemer_id)
-        # Zoek de specifieke cursus die bij de deelnemer hoort
         cursus = deelnemer.cursussen.get(pk=cursus_id)
         
         if not cursus:
@@ -271,18 +233,12 @@ def preview_certificate_html(request, deelnemer_id, cursus_id):
     except Exception as e:
         return HttpResponse(f"Fout bij het genereren van de preview: {str(e)}", status=500)
 
-
-@csrf_exempt  # TOEGEVOEGD
 @api_view(['POST'])
 def send_certificate_email(request, deelnemer_id, cursus_id):
-    """
-    Genereert een PDF-certificaat en verstuurt dit als e-mailbijlage naar de deelnemer.
-    """
     try:
         deelnemer = get_object_or_404(Deelnemer, pk=deelnemer_id)
         cursus = deelnemer.cursussen.get(pk=cursus_id)
 
-        # 1. Genereer de PDF
         context = {
             'deelnemer': deelnemer,
             'cursus': cursus,
@@ -290,7 +246,6 @@ def send_certificate_email(request, deelnemer_id, cursus_id):
         html_string = render_to_string('certificaat_template.html', context)
         pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
 
-        # 2. Maak de e-mail aan
         subject = f"Je certificaat voor de cursus {cursus.cursus}"
         body = f"Beste {deelnemer.voornaam},\n\nHierbij sturen wij je jouw certificaat voor de cursus '{cursus.cursus}', die je succesvol hebt afgerond. Je vindt het certificaat als bijlage bij deze e-mail.\n\nMet vriendelijke groet,\n\nSafetyPro"
         to_email = deelnemer.email
@@ -298,18 +253,16 @@ def send_certificate_email(request, deelnemer_id, cursus_id):
         email = EmailMessage(
             subject,
             body,
-            settings.EMAIL_HOST_USER,  # Gebruikt de zender uit settings.py
+            settings.EMAIL_HOST_USER,
             [to_email],
         )
         
-        # 3. Voeg de PDF toe als bijlage
         email.attach(
             f"certificaat_{deelnemer.voornaam}_{deelnemer.achternaam}.pdf",
             pdf_file,
             'application/pdf'
         )
 
-        # 4. Verzend de e-mail
         email.send()
         
         return Response({"message": "E-mail succesvol verzonden!"}, status=status.HTTP_200_OK)
@@ -318,5 +271,51 @@ def send_certificate_email(request, deelnemer_id, cursus_id):
         return Response({"error": "Deelnemer niet gevonden."}, status=status.HTTP_404_NOT_FOUND)
     except Cursus.DoesNotExist:
         return Response({"error": "Cursus niet gevonden of niet gekoppeld aan deze deelnemer."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"Fout bij het versturen van de e-mail: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def get_local_ip(request):
+    try:
+        hostname = socket.gethostname()
+        ip_address = socket.gethostbyname(hostname)
+        return JsonResponse({'local_ip': ip_address})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def qr_code_page_view(request):
+    return render(request, 'qr-code-page.html')
+
+def email_preview_view(request):
+    return render(request, 'email-preview.html')
+
+def qr_scan_form_view(request):
+    return render(request, 'qr-scan-form.html')
+
+def qr_code_generator_view(request):
+    return render(request, 'qr-code-generator.html')
+
+@api_view(['POST'])
+def send_custom_reminders(request):
+    try:
+        data = json.loads(request.body)
+        reminders = data.get('reminders', [])
+        subject = data.get('subject', 'Herinnering certificaat')
+        body = data.get('body', 'Je certificaat verloopt binnenkort.')
+
+        sent_count = 0
+        for reminder in reminders:
+            deelnemer = get_object_or_404(Deelnemer, id=reminder['deelnemer_id'])
+            
+            # Controleer of e-mailadres niet leeg is
+            if not deelnemer.email:
+                continue
+
+            email = EmailMessage(subject, body, settings.EMAIL_HOST_USER, [deelnemer.email])
+            email.send()
+            sent_count += 1
+            
+        return Response({"sent": sent_count}, status=status.HTTP_200_OK)
+
     except Exception as e:
         return Response({"error": f"Fout bij het versturen van de e-mail: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
