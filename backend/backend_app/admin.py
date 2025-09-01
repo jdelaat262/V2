@@ -29,7 +29,7 @@ class CursusInline(admin.TabularInline):
     certificaat_actions.short_description = "Certificaat"
 
 class DeelnemerAdmin(admin.ModelAdmin):
-    list_display = ['voornaam', 'achternaam', 'email', 'bedrijfsnaam']
+    list_display = ['voornaam','tussenvoegsel', 'achternaam', 'email', 'bedrijfsnaam']
     inlines = [CursusInline]
     
 class CursusAdmin(admin.ModelAdmin):
