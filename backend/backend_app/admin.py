@@ -18,18 +18,17 @@ class CursusInline(admin.TabularInline):
 
     def certificaat_actions(self, obj):
         if obj.id:
+            # We creëren alleen de URL voor de Preview
             preview_url = reverse('preview-certificate', args=[obj.deelnemer.id, obj.cursus.id])
-            pdf_url = reverse('generate-certificate-pdf', args=[obj.deelnemer.id, obj.cursus.id])
             return format_html(
-                '<a href="{}" target="_blank" class="button">Preview</a> '
-                '<a href="{}" target="_blank" class="button">PDF</a>',
-                preview_url, pdf_url
+                '<a href="{}" target="_blank" class="button">Preview</a>',
+                preview_url
             )
         return "Sla eerst op"
     certificaat_actions.short_description = "Certificaat"
 
 class DeelnemerAdmin(admin.ModelAdmin):
-    list_display = ['voornaam','tussenvoegsel', 'achternaam', 'email', 'bedrijfsnaam']
+    list_display = ['voornaam', 'tussenvoegsel', 'achternaam', 'email', 'bedrijfsnaam']
     inlines = [CursusInline]
     
 class CursusAdmin(admin.ModelAdmin):
