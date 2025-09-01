@@ -16,6 +16,8 @@ from .models import Cursus, Deelnemer
 from .serializers import DeelnemerSerializer, CursusSerializer
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
+from .models import QREvent, QRDeelnemer
+from .serializers import QREventSerializer, QRDeelnemerSerializer
 import json
 import socket
 
@@ -319,3 +321,39 @@ def send_custom_reminders(request):
 
     except Exception as e:
         return Response({"error": f"Fout bij het versturen van de e-mail: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+@api_view(['POST'])
+def create_qr_deelnemer_and_event(request):
+    try:
+        data = request.data
+        
+        # 1. Maak de gebeurtenis aan
+        qr_event_data = {
+            'titel': data.get('cursusNaam'),
+            'datum': data.get('cursusdatum'),
+        }
+        qr_event_serializer = QREventSerializer(data=qr_event_data)
+        qr_event_serializer.is_valid(raise_exception=True)
+        qr_event_instance = qr_event_serializer.save()
+
+        # 2. Maak de QR-deelnemer aan en koppel hem aan de gebeurtenis
+        qr_deelnemer_data = {
+            'voornaam': data.get('voornaam'),
+            'achternaam': data.get('achternaam'),
+            'email': data.get('email'),
+            'telefoonnummer': data.get('telefoonnummer'),
+            'qr_event': qr_event_instance.id # Koppel de deelnemer aan het event
+        }
+        qr_deelnemer_serializer = QRDeelnemerSerializer(data=qr_deelnemer_data)
+        qr_deelnemer_serializer.is_valid(raise_exception=True)
+        qr_deelnemer_instance = qr_deelnemer_serializer.save()
+
+        return Response({
+            'message': 'Inschrijving succesvol.',
+            'qr_event_id': qr_event_instance.id,
+            'qr_deelnemer_id': qr_deelnemer_instance.id
+        }, status=201)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)

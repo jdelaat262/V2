@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
-from .models import Cursus, Deelnemer
+from .models import Cursus, Deelnemer, QREvent, QRDeelnemer # <-- Nieuwe modellen
 
 class DeelnemerInline(admin.TabularInline):
     model = Cursus.deelnemers.through
@@ -39,6 +39,10 @@ class CursusInline(admin.TabularInline):
         return "Sla eerst op"
     certificaat_actions.short_description = "Certificaat"
 
+class QRDeelnemerInline(admin.TabularInline):
+    model = QRDeelnemer
+    extra = 1
+
 class DeelnemerAdmin(admin.ModelAdmin):
     list_display = ['voornaam', 'tussenvoegsel', 'achternaam', 'email', 'bedrijfsnaam']
     inlines = [CursusInline]
@@ -47,6 +51,15 @@ class CursusAdmin(admin.ModelAdmin):
     list_display = ['cursus', 'cursusdatum', 'refresher']
     inlines = [DeelnemerInline]
     filter_horizontal = ('deelnemers',)
+
+@admin.register(QREvent)
+class QREventAdmin(admin.ModelAdmin):
+    list_display = ['titel', 'datum', 'locatie']
+    inlines = [QRDeelnemerInline] # <-- Hier voegen we de inline toe
+
+@admin.register(QRDeelnemer)
+class QRDeelnemerAdmin(admin.ModelAdmin):
+    list_display = ['voornaam', 'achternaam', 'email', 'qr_event']
 
 admin.site.register(Deelnemer, DeelnemerAdmin)
 admin.site.register(Cursus, CursusAdmin)

@@ -13,8 +13,6 @@ class Cursus(models.Model):
         related_name='cursussen',
         blank=True
     )
-    
-
 
     class Meta:
         verbose_name_plural = "Cursussen"
@@ -37,7 +35,7 @@ class Deelnemer(models.Model):
         verbose_name_plural = "Deelnemers"
         constraints = [
             models.UniqueConstraint(
-                fields=['voornaam', 'achternaam', 'geboortedatum'],
+                fields=['voornaam', 'tussenvoegsel', 'achternaam', 'geboortedatum'],
                 name='unieke_deelnemer_constraint'
             )
         ]
@@ -47,3 +45,24 @@ class Deelnemer(models.Model):
         name_parts = [self.voornaam, self.tussenvoegsel, self.achternaam]
         full_name = " ".join(filter(None, name_parts))
         return full_name
+    
+class QREvent(models.Model):
+    titel = models.CharField(max_length=200, blank=True, null=True)
+    datum = models.DateField(blank=True, null=True)
+    locatie = models.CharField(max_length=200, blank=True, null=True)
+
+    def __str__(self):
+        return self.titel or 'Onbekend event'
+
+# Nieuw model voor QR-deelnemers
+class QRDeelnemer(models.Model):
+    voornaam = models.CharField(max_length=100)
+    achternaam = models.CharField(max_length=100)
+    email = models.EmailField()
+    telefoonnummer = models.CharField(max_length=20, blank=True, null=True)
+    
+    # ForeignKey om de deelnemer aan een specifiek event te koppelen
+    qr_event = models.ForeignKey(QREvent, on_delete=models.CASCADE, related_name='deelnemers')
+
+    def __str__(self):
+        return f"{self.voornaam} {self.achternaam}"
