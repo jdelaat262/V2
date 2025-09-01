@@ -323,31 +323,38 @@ def send_custom_reminders(request):
         return Response({"error": f"Fout bij het versturen van de e-mail: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
+@csrf_exempt
 @api_view(['POST'])
 def create_qr_deelnemer_and_event(request):
     try:
         data = request.data
         
-        # 1. Maak de gebeurtenis aan
-        qr_event_data = {
-            'titel': data.get('cursusNaam'),
-            'datum': data.get('cursusdatum'),
-        }
-        qr_event_serializer = QREventSerializer(data=qr_event_data)
-        qr_event_serializer.is_valid(raise_exception=True)
-        qr_event_instance = qr_event_serializer.save()
-
-        # 2. Maak de QR-deelnemer aan en koppel hem aan de gebeurtenis
-        qr_deelnemer_data = {
+        # 1. Haal de cursusgegevens op
+        cursus_naam = data.get('cursusNaam')
+        cursus_datum = data.get('cursusdatum')
+        
+        # 2. Gebruik get_or_create() om te garanderen dat het QREvent uniek is
+        qr_event_instance, created = QREvent.objects.get_or_create(
+            titel=cursus_naam,
+            datum=cursus_datum,
+            defaults={
+                'locatie': data.get('locatie', '')
+            }
+        )
+        
+        # 3. Gebruik update_or_create() om de QRDeelnemer bij te werken of aan te maken
+        #    Dit voorkomt duplicaten in de deelnemerslijst
+        deelnemer_data = {
             'voornaam': data.get('voornaam'),
             'achternaam': data.get('achternaam'),
             'email': data.get('email'),
             'telefoonnummer': data.get('telefoonnummer'),
-            'qr_event': qr_event_instance.id # Koppel de deelnemer aan het event
         }
-        qr_deelnemer_serializer = QRDeelnemerSerializer(data=qr_deelnemer_data)
-        qr_deelnemer_serializer.is_valid(raise_exception=True)
-        qr_deelnemer_instance = qr_deelnemer_serializer.save()
+        qr_deelnemer_instance, created = QRDeelnemer.objects.update_or_create(
+            voornaam=deelnemer_data['voornaam'],
+            achternaam=deelnemer_data['achternaam'],
+            defaults={**deelnemer_data, 'qr_event': qr_event_instance}
+        )
 
         return Response({
             'message': 'Inschrijving succesvol.',
