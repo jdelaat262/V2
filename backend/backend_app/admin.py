@@ -50,7 +50,8 @@ class DeelnemerAdmin(admin.ModelAdmin):
 class CursusAdmin(admin.ModelAdmin):
     list_display = ['cursus', 'cursusdatum', 'refresher']
     inlines = [DeelnemerInline]
-    filter_horizontal = ('deelnemers',)
+    # filter_horizontal = ('deelnemers',)
+    readonly_fields = ('deelnemers',)
 
 @admin.register(QREvent)
 class QREventAdmin(admin.ModelAdmin):
