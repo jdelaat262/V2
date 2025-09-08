@@ -68,56 +68,45 @@ def create_deelnemer_and_cursus(request):
         'telefoonnummer': request.data.get('telefoonnummer') or None,
         'windaId': request.data.get('windaId') or None
     }
-
-    print("Cursus data opgebouwd:", cursus_data)
-    print("Deelnemer data opgebouwd:", deelnemer_data)
-
-    cursus_serializer = CursusSerializer(data=cursus_data)
-    deelnemer_serializer = DeelnemerSerializer(data=deelnemer_data)
-
-    print("Cursus serializer valid?", cursus_serializer.is_valid())
-    print("Cursus serializer errors:", cursus_serializer.errors)
-    print("Deelnemer serializer valid?", deelnemer_serializer.is_valid())
-    print("Deelnemer serializer errors:", deelnemer_serializer.errors)
-
-    if cursus_serializer.is_valid() and deelnemer_serializer.is_valid():
-        try:
-            with transaction.atomic():
-                cursus_instance = cursus_serializer.save()
-
-                deelnemer_instance, created = Deelnemer.objects.update_or_create(
-                    voornaam=deelnemer_data['voornaam'],
-                    achternaam=deelnemer_data['achternaam'],
-                    geboortedatum=deelnemer_data['geboortedatum'],
-                    defaults=deelnemer_data
-                )
+    
+    try:
+        with transaction.atomic():
+            # Gebruik get_or_create() voor de cursus, die de uniekheid afdwingt
+            cursus_instance, created_cursus = Cursus.objects.get_or_create(
+                cursus=cursus_data['cursus'],
+                cursusdatum=cursus_data['cursusdatum'],
+                defaults=cursus_data
+            )
+            
+            if created_cursus:
+                print("Nieuwe cursus aangemaakt:", cursus_instance)
+            else:
+                print("Bestaande cursus gevonden:", cursus_instance)
                 
-                if created:
-                    print("Nieuwe deelnemer aangemaakt:", deelnemer_instance)
-                else:
-                    print("Bestaande deelnemer bijgewerkt:", deelnemer_instance)
+            # Hiernaast wordt de deelnemer bijgewerkt of aangemaakt.
+            deelnemer_instance, created_deelnemer = Deelnemer.objects.update_or_create(
+                voornaam=deelnemer_data['voornaam'],
+                achternaam=deelnemer_data['achternaam'],
+                geboortedatum=deelnemer_data['geboortedatum'],
+                defaults=deelnemer_data
+            )
+            
+            if created_deelnemer:
+                print("Nieuwe deelnemer aangemaakt:", deelnemer_instance)
+            else:
+                print("Bestaande deelnemer bijgewerkt:", deelnemer_instance)
 
-                cursus_instance.deelnemers.add(deelnemer_instance)
-                print("Koppeling gemaakt!")
+            cursus_instance.deelnemers.add(deelnemer_instance)
+            print("Koppeling gemaakt!")
 
-                response_data = {
-                    "cursus_data": cursus_serializer.data,
-                    "deelnemer_data": DeelnemerSerializer(deelnemer_instance).data
-                }
-                
-                return Response(response_data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            print("Fout bij aanmaken/bijwerken:", str(e))
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    else:
-        errors = {}
-        if not cursus_serializer.is_valid():
-            errors['cursus_errors'] = cursus_serializer.errors
-        if not deelnemer_serializer.is_valid():
-            errors['deelnemer_errors'] = deelnemer_serializer.errors
-        
-        print("Errors geretourneerd:", errors)
-        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+            response_data = {
+                "cursus_data": CursusSerializer(cursus_instance).data,
+                "deelnemer_data": DeelnemerSerializer(deelnemer_instance).data
+            }
+            return Response(response_data, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        print("Fout bij aanmaken/bijwerken:", str(e))
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def get_expiring_certificates(request):
